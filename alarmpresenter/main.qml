@@ -21,6 +21,7 @@ import Nemo.Alarms 1.0
 import Nemo.DBus 2.0
 import Nemo.Configuration 1.0
 import Nemo.Ngf 1.0
+import Nemo.Notifications 1.0
 import org.asteroid.controls 1.0
 import QtMultimedia 5.4
 
@@ -86,15 +87,19 @@ Application {
             }
             else {
                 font.pixelSize = Dims.l(15)
-                if(use12H.value) {
-                    var amPm = "AM";
-                    if(alarm.hour >= 12)
-                        amPm = "PM";
-                    return twoDigits(alarmDialog.hour%12) + ":" + twoDigits(alarmDialog.minute) + amPm
-                } else
-                    return twoDigits(alarmDialog.hour) + ":" + twoDigits(alarmDialog.minute)
+                return formatAlarmTime()
             }
         }
+    }
+
+    function formatAlarmTime() {
+        if(use12H.value) {
+            var amPm = "AM";
+            if(alarmDialog.hour >= 12)
+                amPm = "PM";
+            return twoDigits(alarmDialog.hour%12) + ":" + twoDigits(alarmDialog.minute) + amPm
+        } else
+            return twoDigits(alarmDialog.hour) + ":" + twoDigits(alarmDialog.minute)
     }
 
     IconButton {
@@ -168,12 +173,25 @@ Application {
         interval: 30000
         onTriggered: {
             feedback.stop()
+            if(alarmDialog.timeoutSnoozeCounter == alarmDialog.maximalTimeoutSnoozeCount) {
+                autodismissedAlarmMessage.previewBody = qsTrId("id-missed-alarm") + formatAlarmTime()
+                autodismissedAlarmMessage.publish()
+                console.log("missed alarm notification has apparently been published")
+            } else
+                console.log("not publishing missed alarm notification", alarmDialog.timeoutSnoozeCounter, alarmDialog.maximalTimeoutSnoozeCount)
             if(alarmDialog !== undefined && alarmDialog !== null)
                 alarmDialog.close()
             alarmTimeField.text = ""
             alarmHandler.dialogOnScreen = false
             window.close()
         }
+    }
+
+    Notification {
+        id: autodismissedAlarmMessage
+        appName: "Alarm"
+        previewBody: ""
+        isTransient: false
     }
 
     DBusInterface {
